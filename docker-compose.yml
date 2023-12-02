@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  redis:
+    container_name: redis-broker
+    image: redis:latest
+    ports:
+      - 6379:6379
+  scylla:
+    container_name: scylla-database
+    image: scylladb/scylla
+    ports:
+      - 9042:9042
+    environment:
+      - SCYLLA_CLUSTER_NAME=scylladb-test_cluster
+      - SCYLLA_DC=dc1
+      - SCYLLA_LISTEN_ADDRESS=0.0.0.0
+      - SCYLLA_RPC_ADDRESS=0.0.0.0
