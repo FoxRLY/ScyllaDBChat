@@ -17,11 +17,20 @@ use actix_web_actors::ws;
 use uuid::Uuid;
 
 pub mod data_types {
+    use crate::database::PageIndex;
+
     use super::*;
     pub struct Addresses {
         pub db: Addr<DatabaseActor>,
         pub broker: Addr<BrokerActor>,
         pub redis: Addr<RedisActor>,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct ChatHistoryRequest {
+        pub chat_id: Uuid,
+        pub page_index: Option<PageIndex>,
+        pub page_size: usize,
     }
 
     #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -94,8 +103,8 @@ async fn create_new_private_chat(
         Ok(info) => HttpResponse::Ok()
             .body(serde_json::to_string(&info).expect("Cannot convert chat info to string")),
         Err(DBError::LogicError(e)) => HttpResponse::Conflict().body(e.to_string()),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}"),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
+        Err(DBError::QueryError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(DBError::OtherError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
@@ -111,7 +120,7 @@ async fn create_new_group_chat(
     let new_chat = new_chat.into_inner();
     let creator_id = user_id.into_inner();
     let chat_name = new_chat.new_chat_name;
-    let invited_users_id = if let Ok(v) = serde_json::from_str::<Vec<i64>>(&new_chat.guest_users){
+    let invited_users_id = if let Ok(v) = serde_json::from_str::<Vec<i64>>(&new_chat.guest_users) {
         v
     } else {
         return HttpResponse::BadRequest().body("Malformed json format for guest user ids");
@@ -129,8 +138,8 @@ async fn create_new_group_chat(
         Ok(info) => HttpResponse::Ok()
             .body(serde_json::to_string(&info).expect("Cannot convert chat info to string")),
         Err(DBError::LogicError(e)) => HttpResponse::Conflict().body(e.to_string()),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}"),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
+        Err(DBError::QueryError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(DBError::OtherError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
@@ -160,8 +169,8 @@ async fn add_user_to_chat(
     match result {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(DBError::LogicError(e)) => HttpResponse::Forbidden().body(e.to_string()),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}"),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
+        Err(DBError::QueryError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(DBError::OtherError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
@@ -189,8 +198,8 @@ async fn exit_chat(
     match result {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(DBError::LogicError(e)) => HttpResponse::Conflict().body(e.to_string()),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}"),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
+        Err(DBError::QueryError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(DBError::OtherError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
 
@@ -216,8 +225,12 @@ async fn get_chat_info(
     let chat_info = match chat_info {
         Ok(info) => info,
         Err(DBError::LogicError(e)) => return HttpResponse::Forbidden().body(e.to_string()),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}"),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
+        Err(DBError::QueryError(e)) => {
+            return HttpResponse::InternalServerError().body(e.to_string())
+        }
+        Err(DBError::OtherError(e)) => {
+            return HttpResponse::InternalServerError().body(e.to_string())
+        }
     };
     HttpResponse::Ok().body(serde_json::to_string(&chat_info).unwrap())
 }
@@ -241,13 +254,15 @@ async fn get_user_info(
         .send(database_actor::messages::GetUserInfo { user_id })
         .await
         .expect("Sending message to Database actor -> Failed");
-    let user_info: data_types::UserInfoStripped = match user_info{
+    let user_info: data_types::UserInfoStripped = match user_info {
         Ok(info) => info.into(),
         Err(DBError::LogicError(e)) => return HttpResponse::NotFound().body(e.to_string()),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}")
-        // Err(DBError::OtherError(e)) => return Ok(HttpResponse::InternalServerError().body(e.to_string())),
-        // Err(DBError::QueryError(e)) => return Ok(HttpResponse::InternalServerError().body(e.to_string())),
+        Err(DBError::OtherError(e)) => {
+            return HttpResponse::InternalServerError().body(e.to_string())
+        }
+        Err(DBError::QueryError(e)) => {
+            return HttpResponse::InternalServerError().body(e.to_string())
+        }
     };
     return HttpResponse::Ok()
         .body(serde_json::to_string(&user_info).expect("Failed converting user info to json"));
@@ -275,8 +290,12 @@ async fn get_user_chats(
     let chats = match chats {
         Ok(c) => c,
         Err(DBError::LogicError(e)) => return HttpResponse::Unauthorized().body(e.to_string()),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}"),
+        Err(DBError::OtherError(e)) => {
+            return HttpResponse::InternalServerError().body(e.to_string())
+        }
+        Err(DBError::QueryError(e)) => {
+            return HttpResponse::InternalServerError().body(e.to_string())
+        }
     };
     HttpResponse::Ok()
         .body(serde_json::to_string(&chats).expect("Failed converting user chats to json"))
@@ -292,7 +311,7 @@ async fn get_user_chats(
 /// чата, ибо может выйти так, что аккаунта пользователя в чате не сущетвует, из-за чего многие
 /// запросы будут выдавать ошибку Unauthorized
 ///
-/// /api/user/authorize?user-name={имя пользователя} = {id: i64, name: String, chats: [UUID]}
+/// /api/user/authorize?user_name={имя пользователя} = {id: i64, name: String, chats: [UUID]}
 #[post("/authorization")]
 async fn authorize_user(
     user_id: ReqData<i64>,
@@ -318,15 +337,47 @@ async fn authorize_user(
             new_info
         }
         Err(DBError::QueryError(e)) => {
-            panic!("Query error: {e}")
-            // return HttpResponse::InternalServerError().body(e.to_string())
+            return HttpResponse::InternalServerError().body(e.to_string())
         }
         Err(DBError::OtherError(e)) => {
-            panic!("Other error: {e}")
-            // return HttpResponse::InternalServerError().body(e.to_string())
+            return HttpResponse::InternalServerError().body(e.to_string())
         }
     };
     HttpResponse::Ok().body(serde_json::to_string(&user_info).expect("Cannot serialize user info"))
+}
+
+/// Получить предудыщуие сообщения из чата с пагинацией
+/// page_index может не присутствовать, при первом запросе, однако, он обязан быть при последующих
+/// Индекс можно получить из первого запроса
+/// /api/chat/history?chat_id={id_чата}&page_index={индекс}&page_size={размер_страницы}
+/// = {[[сообщения], индекс]}
+#[get("/history")]
+async fn get_chat_history(
+    user_id: ReqData<i64>,
+    req: web::Query<data_types::ChatHistoryRequest>,
+    data: web::Data<data_types::Addresses>,
+) -> impl Responder {
+    let user_id = user_id.into_inner();
+    let req_info = req.into_inner();
+    let chat_id = req_info.chat_id;
+    let page_index = req_info.page_index;
+    let page_size = req_info.page_size;
+    let chat_history = data
+        .db
+        .send(database_actor::messages::GetChatHistory {
+            user_id,
+            chat_id,
+            page_size,
+            page_index,
+        })
+        .await
+        .expect("Sending message to Database actor -> Failed");
+    match chat_history {
+        Ok(v) => HttpResponse::Ok().body(serde_json::to_string(&v).unwrap()),
+        Err(DBError::LogicError(e)) => HttpResponse::Forbidden().body(e.to_string()),
+        Err(DBError::QueryError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(DBError::OtherError(e)) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
 }
 
 #[get("/ws")]
@@ -342,13 +393,15 @@ async fn websocket_startup(
         .send(database_actor::messages::GetUserInfo { user_id })
         .await
         .expect("Sending message to Database actor -> Failed");
-    match user_info{
-        Ok(_) => {},
+    match user_info {
+        Ok(_) => {}
         Err(DBError::LogicError(e)) => return Ok(HttpResponse::Unauthorized().body(e.to_string())),
-        Err(DBError::OtherError(e)) => panic!("Other error: {e}"),
-        Err(DBError::QueryError(e)) => panic!("Query error: {e}")
-        // Err(DBError::OtherError(e)) => return Ok(HttpResponse::InternalServerError().body(e.to_string())),
-        // Err(DBError::QueryError(e)) => return Ok(HttpResponse::InternalServerError().body(e.to_string())),
+        Err(DBError::OtherError(e)) => {
+            return Ok(HttpResponse::InternalServerError().body(e.to_string()))
+        }
+        Err(DBError::QueryError(e)) => {
+            return Ok(HttpResponse::InternalServerError().body(e.to_string()))
+        }
     }
     let new_websocket = WebsocketActor::new(
         data.broker.clone(),

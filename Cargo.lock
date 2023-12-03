@@ -472,6 +472,7 @@ dependencies = [
  "futures",
  "futures-util",
  "jsonwebtoken",
+ "log",
  "mockall",
  "redis",
  "scylla",

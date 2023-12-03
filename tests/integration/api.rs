@@ -13,15 +13,9 @@ use chat::{
         redis_actor::RedisActor,
     },
     handlers::{
-        add_user_to_chat,
-        create_new_group_chat,
-        create_new_private_chat,
-        exit_chat,
-        get_chat_info,
-        get_user_info,
-        get_user_chats,
-        authorize_user,
-        data_types::Addresses},
+        add_user_to_chat, authorize_user, create_new_group_chat, create_new_private_chat,
+        data_types::Addresses, exit_chat, get_chat_info, get_user_chats, get_user_info,
+    },
     middlewares::test_token_middleware::TestAuthMiddleware,
 };
 use serial_test::serial;
@@ -51,12 +45,10 @@ macro_rules! uri {
     };
 }
 
-async fn parse_response<T: Sized + serde::de::DeserializeOwned>
-(
+async fn parse_response<T: Sized + serde::de::DeserializeOwned>(
     response: ServiceResponse<EitherBody<BoxBody>>,
     success_code: StatusCode,
-)
--> Result<T, (StatusCode, String)> {
+) -> Result<T, (StatusCode, String)> {
     let status = response.status();
     let response_body = actix_web::test::read_body(response).await;
     let response_body = String::from_utf8(response_body.to_vec());
@@ -69,12 +61,10 @@ async fn parse_response<T: Sized + serde::de::DeserializeOwned>
     }
 }
 
-async fn get_response_text
-(
+async fn get_response_text(
     response: ServiceResponse<EitherBody<BoxBody>>,
     success_code: StatusCode,
-)
--> Result<String, (StatusCode, String)> {
+) -> Result<String, (StatusCode, String)> {
     let status = response.status();
     let response_body = actix_web::test::read_body(response).await;
     let response_body = String::from_utf8(response_body.to_vec());
@@ -88,12 +78,15 @@ async fn get_response_text
 
 mod api_tests {
 
-    use chat::{database::data::{UserInfo, ChatInfo, ChatType}, handlers::data_types::UserInfoStripped};
+    use chat::{
+        database::data::{ChatInfo, ChatType, UserInfo},
+        handlers::data_types::UserInfoStripped,
+    };
     use uuid::Uuid;
 
     use super::*;
 
-    fn create_new_user_request(user_name: &str, user_id: i64)-> actix_http::Request {
+    fn create_new_user_request(user_name: &str, user_id: i64) -> actix_http::Request {
         let uri = uri!("/authorization?user_name={}", user_name);
         let request = actix_web::test::TestRequest::post()
             .uri(&uri)
@@ -101,7 +94,7 @@ mod api_tests {
             .to_request();
         request
     }
-    
+
     fn get_user_chats_request(user_id: i64) -> actix_http::Request {
         let uri = uri!("/chats");
         let request = actix_web::test::TestRequest::get()
@@ -111,8 +104,16 @@ mod api_tests {
         request
     }
 
-    fn create_new_private_chat_request(creator_id: i64, chat_name: &str, guest_id: i64) -> actix_http::Request {
-        let uri = uri!("/new-private?guest_user={}&new_chat_name={}", &guest_id.to_string(), chat_name);
+    fn create_new_private_chat_request(
+        creator_id: i64,
+        chat_name: &str,
+        guest_id: i64,
+    ) -> actix_http::Request {
+        let uri = uri!(
+            "/new-private?guest_user={}&new_chat_name={}",
+            &guest_id.to_string(),
+            chat_name
+        );
         let req = actix_web::test::TestRequest::post()
             .uri(&uri)
             .insert_header(("chat_user_id", creator_id))
@@ -145,7 +146,7 @@ mod api_tests {
 
     #[actix_web::test]
     #[serial]
-    async fn get_user_info_test(){
+    async fn get_user_info_test() {
         let data = prepare_database().await;
         let app = actix_web::test::init_service(
             App::new()
@@ -153,12 +154,21 @@ mod api_tests {
                 .service(get_user_info)
                 .service(create_new_private_chat)
                 .app_data(data)
-                .wrap(TestAuthMiddleware)
+                .wrap(TestAuthMiddleware),
         )
         .await;
-        let _r = app.call(create_new_user_request("Test user 1", 1)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 2", 2)).await.unwrap();
-        let _r = app.call(create_new_private_chat_request(1, "Test chat", 2)).await.unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 1", 1))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 2", 2))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_private_chat_request(1, "Test chat", 2))
+            .await
+            .unwrap();
         let req = actix_web::test::TestRequest::get()
             .uri(&uri!("/info?user_id={}", "2"))
             .insert_header(("chat_user_id", 1))
@@ -171,7 +181,7 @@ mod api_tests {
 
     #[actix_web::test]
     #[serial]
-    async fn add_new_chat_member_test(){
+    async fn add_new_chat_member_test() {
         let data = prepare_database().await;
         let app = actix_web::test::init_service(
             App::new()
@@ -184,13 +194,29 @@ mod api_tests {
         )
         .await;
 
-        let _r = app.call(create_new_user_request("Test user 1", 1)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 2", 2)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 3", 3)).await.unwrap();
-        let res = app.call(create_new_private_chat_request(1, "Test chat", 2)).await.unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 1", 1))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 2", 2))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 3", 3))
+            .await
+            .unwrap();
+        let res = app
+            .call(create_new_private_chat_request(1, "Test chat", 2))
+            .await
+            .unwrap();
         let chat_info: ChatInfo = parse_response(res, StatusCode::OK).await.unwrap();
         let req = actix_web::test::TestRequest::put()
-            .uri(&uri!("/new-user?guest_id={}&chat_id={}", &3.to_string(), &chat_info.id.to_string()))
+            .uri(&uri!(
+                "/new-user?guest_id={}&chat_id={}",
+                &3.to_string(),
+                &chat_info.id.to_string()
+            ))
             .insert_header(("chat_user_id", 1))
             .to_request();
         let _res = app.call(req).await.unwrap();
@@ -199,10 +225,9 @@ mod api_tests {
         assert!(user_chats.contains(&chat_info.id));
     }
 
-
     #[actix_web::test]
     #[serial]
-    async fn get_chat_info_test(){
+    async fn get_chat_info_test() {
         let data = prepare_database().await;
         let app = actix_web::test::init_service(
             App::new()
@@ -213,9 +238,18 @@ mod api_tests {
                 .wrap(TestAuthMiddleware),
         )
         .await;
-        let _r = app.call(create_new_user_request("Test user 1", 1)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 2", 2)).await.unwrap();
-        let r = app.call(create_new_private_chat_request(1, "Test chat", 2)).await.unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 1", 1))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 2", 2))
+            .await
+            .unwrap();
+        let r = app
+            .call(create_new_private_chat_request(1, "Test chat", 2))
+            .await
+            .unwrap();
         let chat_info: ChatInfo = parse_response(r, StatusCode::OK).await.unwrap();
         let req = actix_web::test::TestRequest::get()
             .uri(&uri!("/info?chat_id={}", &chat_info.id.to_string()))
@@ -243,9 +277,18 @@ mod api_tests {
                 .wrap(TestAuthMiddleware),
         )
         .await;
-        let _r = app.call(create_new_user_request("Test user 1", 1)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 2", 2)).await.unwrap();
-        let r = app.call(create_new_private_chat_request(1, "Test chat", 2)).await.unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 1", 1))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 2", 2))
+            .await
+            .unwrap();
+        let r = app
+            .call(create_new_private_chat_request(1, "Test chat", 2))
+            .await
+            .unwrap();
         let chat_info: ChatInfo = parse_response(r, StatusCode::OK).await.unwrap();
         let req = actix_web::test::TestRequest::put()
             .uri(&uri!("/exit?chat_id={}", &chat_info.id.to_string()))
@@ -257,7 +300,6 @@ mod api_tests {
         let chats: Vec<Uuid> = serde_json::from_str(&chats_raw).unwrap();
         assert!(chats.is_empty());
     }
-    
 
     #[actix_web::test]
     #[serial]
@@ -272,12 +314,25 @@ mod api_tests {
                 .wrap(TestAuthMiddleware),
         )
         .await;
-        let _r = app.call(create_new_user_request("Test user 1", 1)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 2", 2)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 3", 3)).await.unwrap();
-        let user_ids = serde_json::to_string(&vec!(2,3)).unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 1", 1))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 2", 2))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 3", 3))
+            .await
+            .unwrap();
+        let user_ids = serde_json::to_string(&vec![2, 3]).unwrap();
         let req = actix_web::test::TestRequest::post()
-            .uri(&uri!("/new-group?guest_users={}&new_chat_name={}", &user_ids, "Test chat"))
+            .uri(&uri!(
+                "/new-group?guest_users={}&new_chat_name={}",
+                &user_ids,
+                "Test chat"
+            ))
             .insert_header(("chat_user_id", 1))
             .to_request();
         let res = app.call(req).await.unwrap();
@@ -305,10 +360,19 @@ mod api_tests {
                 .wrap(TestAuthMiddleware),
         )
         .await;
-        let _r = app.call(create_new_user_request("Test user 1", 1)).await.unwrap();
-        let _r = app.call(create_new_user_request("Test user 2", 2)).await.unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 1", 1))
+            .await
+            .unwrap();
+        let _r = app
+            .call(create_new_user_request("Test user 2", 2))
+            .await
+            .unwrap();
         let req = actix_web::test::TestRequest::post()
-            .uri(&uri!("/new-private?guest_user=2&new_chat_name={}", "Test chat"))
+            .uri(&uri!(
+                "/new-private?guest_user=2&new_chat_name={}",
+                "Test chat"
+            ))
             .insert_header(("chat_user_id", 1))
             .to_request();
         let res = app.call(req).await.unwrap();
@@ -336,14 +400,18 @@ mod api_tests {
         .await;
         let new_user_request = create_new_user_request("Test user", 3);
         let response = app.call(new_user_request).await.unwrap();
-        let _response = parse_response::<UserInfo>(response, StatusCode::OK).await.unwrap();
+        let _response = parse_response::<UserInfo>(response, StatusCode::OK)
+            .await
+            .unwrap();
         let uri = uri!("/chats");
         let request = actix_web::test::TestRequest::get()
             .uri(&uri)
             .insert_header(("chat_user_id", 3))
             .to_request();
         let response = app.call(request).await.unwrap();
-        let response = parse_response::<Vec<Uuid>>(response, StatusCode::OK).await.unwrap();
+        let response = parse_response::<Vec<Uuid>>(response, StatusCode::OK)
+            .await
+            .unwrap();
         assert!(response.is_empty())
     }
 
@@ -364,7 +432,9 @@ mod api_tests {
             .insert_header(("chat_user_id", 3))
             .to_request();
         let response = app.call(request).await.unwrap();
-        let response = parse_response::<UserInfo>(response, StatusCode::OK).await.unwrap();
+        let response = parse_response::<UserInfo>(response, StatusCode::OK)
+            .await
+            .unwrap();
         assert_eq!(response.id, 3);
         assert_eq!(&response.name, "Test User");
         assert!(response.chats.is_empty());

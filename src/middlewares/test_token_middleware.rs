@@ -54,10 +54,11 @@ where
             id
         } else {
             let (req, _req_body) = req.into_parts();
-            let response = HttpResponse::PermanentRedirect()
-                .insert_header(("Location", "/login"))
-                .finish()
-                .map_into_right_body();
+            let response = HttpResponse::Unauthorized().finish().map_into_right_body();
+            // let response = HttpResponse::PermanentRedirect()
+            //     .insert_header(("Location", "/login"))
+            //     .finish()
+            //     .map_into_right_body();
             return Box::pin(async move { Ok(ServiceResponse::new(req, response)) });
         };
 
