@@ -13,6 +13,7 @@ actix-web = "4.4.0"
 actix-web-actors = "4.2.0"
 async-trait = "0.1.73"
 chrono = { version = "0.4.31", features = ["serde"] }
+env_logger = "0.10.1"
 futures = "0.3.28"
 futures-util = "0.3.28"
 jsonwebtoken = "8.3.0"

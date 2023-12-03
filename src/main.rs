@@ -3,11 +3,13 @@ use actix_web::{
     self,
     web::{self},
     App, HttpServer,
+    middleware::Logger
 };
+
 use std::error::Error;
 
 use chat::{
-    actors::{broker_actor::BrokerActor, database_actor::DatabaseActor, redis_actor::RedisActor},
+    actors::{broker_actor::BrokerActor, database_actor::{DatabaseActor, messages::InitDatabase}, redis_actor::RedisActor},
     handlers::{
         add_user_to_chat, authorize_user, create_new_group_chat, create_new_private_chat,
         data_types::Addresses, exit_chat, get_chat_info, get_user_chats, get_user_info,
@@ -38,10 +40,12 @@ use chat::{
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
     let db = DatabaseActor::new("127.0.0.1".into(), 9042)
         .await
         .map_err(|e| e.to_string())?
         .start();
+    db.send(InitDatabase).await.unwrap().unwrap();
     let broker = BrokerActor::new(db.clone()).await.start();
     let redis = RedisActor::new("127.0.0.1", 6379, broker.clone())
         .await
@@ -55,6 +59,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let data = web::Data::new(addrs);
     let _ = HttpServer::new(move || {
         App::new()
+            .wrap(Logger::default())
             .wrap(TestAuthMiddleware)
             .service(
                 web::scope("/api")
