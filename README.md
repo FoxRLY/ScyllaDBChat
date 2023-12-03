@@ -21,7 +21,6 @@
 - ```/api/user/authorization?user_name={имя_пользователя}``` = {id: i64, name: str, chats: [UUID]} - Авторизация пользователя в чате(необходимо выполнить при первом заходе пользователя в севрис чата), попутно выдает полную информацию о текущем пользователе
 - ```/api/chat/new-group=guest_users={[id_пользователей]}&new_chat_name={имя_чата}``` = {id: UUID, name: str, users: [i64], chat_type: str} - Создать новый групповой чат
 - ```/api/chat/new-private=guest_user={id_пользователя}&new_chat_name={имя_чата}``` = {id: UUID, name: str, users: [i64], chat_type: str} - Создать новый приватный чат
-- ```/```
 ### PUT:
 - ```/api/chat/exit?chat_id={id_чата}``` - Выйти из чата
 - ```/api/chat/new-user?guest_id={id_пользователя}&chat_id={id_чата}``` - Добавить пользователя в чат
