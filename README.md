@@ -12,15 +12,15 @@
 Для каждого из следующих эндпоинтов в заголовках запроса должен быть пункт ```chat_user_id: i64```.
 ### GET:
 - ```/ws``` - Подключение к вебсокету
-- ```/api/chat/info?chat_id={id_чата}``` = {id: UUID, name: str, users: [i64], chat_type: str} - Получить информацию о чате
-- ```/api/user/info?user_id={id_пользователя}``` = {id: i64, name: str} - Получить информацию о пользователе
-- ```/api/user/chats``` = {[UUID]} - Получить чаты текущего пользователя
-- ```/api/chat/history?chat_id={id_чата}&page_size={размер_страницы}``` = [[{chat_id: UUID, sender_id: i64, date: DATE, msg_text: str}], index] - получить первую страницу истории чата с конца
-- ```/api/chat/history?chat_id={id_чата}&page_size={размер_страницы}&page_index={index}``` = [[{chat_id: UUID, sender_id: i64, date: DATE, msg_text: str}], index] - получить следующую страницу истории чата с конца с помощью индекса
+- ```/api/chat/info?chat_id={id_чата}``` = ```{id: UUID, name: str, users: [i64], chat_type: str}``` - Получить информацию о чате
+- ```/api/user/info?user_id={id_пользователя}``` = ```{id: i64, name: str}``` - Получить информацию о пользователе
+- ```/api/user/chats``` = ```{[UUID]}``` - Получить чаты текущего пользователя
+- ```/api/chat/history?chat_id={id_чата}&page_size={размер_страницы}``` = ```[[{chat_id: UUID, sender_id: i64, date: DATE, msg_text: str}], index]``` - получить первую страницу истории чата с конца
+- ```/api/chat/history?chat_id={id_чата}&page_size={размер_страницы}&page_index={index}``` = ```[[{chat_id: UUID, sender_id: i64, date: DATE, msg_text: str}], index]``` - получить следующую страницу истории чата с конца с помощью индекса
 ### POST:
-- ```/api/user/authorization?user_name={имя_пользователя}``` = {id: i64, name: str, chats: [UUID]} - Авторизация пользователя в чате(необходимо выполнить при первом заходе пользователя в севрис чата), попутно выдает полную информацию о текущем пользователе
-- ```/api/chat/new-group=guest_users={[id_пользователей]}&new_chat_name={имя_чата}``` = {id: UUID, name: str, users: [i64], chat_type: str} - Создать новый групповой чат
-- ```/api/chat/new-private=guest_user={id_пользователя}&new_chat_name={имя_чата}``` = {id: UUID, name: str, users: [i64], chat_type: str} - Создать новый приватный чат
+- ```/api/user/authorization?user_name={имя_пользователя}``` = ```{id: i64, name: str, chats: [UUID]}``` - Авторизация пользователя в чате(необходимо выполнить при первом заходе пользователя в севрис чата), попутно выдает полную информацию о текущем пользователе
+- ```/api/chat/new-group=guest_users={[id_пользователей]}&new_chat_name={имя_чата}``` = ```{id: UUID, name: str, users: [i64], chat_type: str}``` - Создать новый групповой чат
+- ```/api/chat/new-private=guest_user={id_пользователя}&new_chat_name={имя_чата}``` = ```{id: UUID, name: str, users: [i64], chat_type: str}``` - Создать новый приватный чат
 ### PUT:
 - ```/api/chat/exit?chat_id={id_чата}``` - Выйти из чата
 - ```/api/chat/new-user?guest_id={id_пользователя}&chat_id={id_чата}``` - Добавить пользователя в чат
